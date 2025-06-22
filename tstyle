@@ -1,0 +1,200 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+## Penulis  : Javas
+
+## Deskripsi: Script sederhana untuk mengubah tema warna & font di Termux
+
+# Warna ANSI
+RED="$(printf '\033[31m')"  GREEN="$(printf '\033[32m')"  ORANGE="$(printf '\033[33m')"  BLUE="$(printf '\033[34m')"
+MAGENTA="$(printf '\033[35m')"  CYAN="$(printf '\033[36m')"  WHITE="$(printf '\033[37m')" BLACK="$(printf '\033[30m')"
+REDBG="$(printf '\033[41m')"  GREENBG="$(printf '\033[42m')"  ORANGEBG="$(printf '\033[43m')"  BLUEBG="$(printf '\033[44m')"
+MAGENTABG="$(printf '\033[45m')"  CYANBG="$(printf '\033[46m')"  WHITEBG="$(printf '\033[47m')" BLACKBG="$(printf '\033[40m')"
+DEFAULT_FG="$(printf '\033[39m')"  DEFAULT_BG="$(printf '\033[49m')"
+
+# Direktori
+PREFIX='/data/data/com.termux/files/usr'
+TERMUX_DIR="$HOME/.termux"
+COLORS_DIR="$PREFIX/share/termux-style/colors"
+FONTS_DIR="$PREFIX/share/termux-style/fonts"
+
+# Banner
+banner () {
+clear
+echo "
+${BLUE}┌──────────────────────────────────────────────────┐
+${BLUE}│${RED}░▀█▀░█▀▀░█▀▄░█▄█░█░█░█░█${ORANGE}░░░░░${GREEN}█▀▀░▀█▀░█░█░█░░░█▀▀░░${BLUE}│
+${BLUE}│${RED}░░█░░█▀▀░█▀▄░█░█░█░█░▄▀▄${ORANGE}░▄▄▄${RED}░${GREEN}▀▀█░░█░░░█░░█░░░█▀▀░░${BLUE}│
+${BLUE}│${RED}░░▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀░▀${ORANGE}░░░░░${GREEN}▀▀▀░░▀░░░▀░░▀▀▀░▀▀▀░░${BLUE}│
+${BLUE}└──────────────────────────────────────────────────┘
+${BLUE}[${RED}*${BLUE}] ${ORANGE}Oleh - Javas"
+}
+
+# Keluar jika ditekan CTRL+C atau dihentikan
+exit_on_signal_SIGINT () {
+{ printf "\n\n%s\n" "    ${BLUE}[${RED}*${BLUE}] ${RED}Script dihentikan."; echo; reset_color; }
+exit 0
+}
+
+exit_on_signal_SIGTERM () {
+{ printf "\n\n%s\n" "    ${BLUE}[${RED}*${BLUE}] ${RED}Script dihentikan paksa."; echo; reset_color; }
+exit 0
+}
+
+trap exit_on_signal_SIGINT SIGINT
+trap exit_on_signal_SIGTERM SIGTERM
+
+# Reset warna terminal
+reset_color() {
+tput sgr0
+tput op
+return
+}
+
+# Cek jumlah file tema/font
+check_files () {
+if [[ "$1" = colors ]]; then
+colors=($(ls $COLORS_DIR))
+echo ${#colors[@]}
+elif [[ "$1" = fonts ]]; then
+fonts=($(ls $FONTS_DIR))
+echo ${#fonts[@]}
+fi
+return
+}
+
+total_colors=$(check_files colors)
+total_fonts=$(check_files fonts)
+
+# Muat ulang pengaturan
+reload_settings () {
+echo "    ${BLUE}[${RED}*${BLUE}] ${MAGENTA}Memuat ulang pengaturan..."
+am broadcast --user 0 -a com.termux.app.reload_style com.termux > /dev/null
+echo "    ${BLUE}[${RED}*${BLUE}] ${GREEN}Berhasil diterapkan."; echo
+return
+}
+
+# Terapkan tema
+apply_colors () {
+local count=1
+color_schemes=($(ls $COLORS_DIR))
+for colors in "${color_schemes[@]}"; do
+    echo ${ORANGE}"    [$count] ${colors%.*}"
+    count=$((count+1))
+done
+
+echo; read -p "${BLUE}    [${RED}Pilih Tema Warna (1 s/d $total_colors)${BLUE}]: ${GREEN}" answer; echo
+
+if [[ -n "$answer" && "$answer" -le $total_colors ]]; then
+    scheme=${color_schemes[(( answer - 1 ))]}
+    echo "    ${BLUE}[${RED}*${BLUE}] ${ORANGE}Menerapkan tema..."
+    cp $COLORS_DIR/$scheme $TERMUX_DIR/colors.properties
+    echo "$scheme" > "$TERMUX_DIR/.current_color"
+    reload_settings; reset_color; exit
+else
+    echo -n "    ${BLUE}[${RED}!${BLUE}] ${RED}Pilihan tidak valid. Coba lagi."
+    sleep 2; banner; echo; apply_colors
+fi
+return
+}
+
+# Terapkan font
+apply_fonts () {
+local count=1
+fonts_list=($(ls $FONTS_DIR))
+for fonts in "${fonts_list[@]}"; do
+    echo ${ORANGE}"    [$count] ${fonts%.*}"
+    count=$((count+1))
+done
+
+echo; read -p "${BLUE}    [${RED}Pilih Font (1 s/d $total_fonts)${BLUE}]: ${GREEN}" answer; echo
+
+if [[ -n "$answer" && "$answer" -le $total_fonts ]]; then
+    font_ttf=${fonts_list[(( answer - 1 ))]}
+    echo "    ${BLUE}[${RED}*${BLUE}] ${ORANGE}Menerapkan font..."
+    cp $FONTS_DIR/$font_ttf $TERMUX_DIR/font.ttf
+    echo "$font_ttf" > "$TERMUX_DIR/.current_font"
+    reload_settings; reset_color; exit
+else
+    echo -n "    ${BLUE}[${RED}!${BLUE}] ${RED}Pilihan tidak valid. Coba lagi."
+    sleep 2; banner; echo; apply_fonts
+fi
+return
+}
+
+# Gaya acak
+random_style () {
+echo "    ${BLUE}[${RED}*${BLUE}] ${ORANGE}Menerapkan gaya acak..."
+random_scheme=$(ls $COLORS_DIR | shuf -n 1)
+cp $COLORS_DIR/$random_scheme $TERMUX_DIR/colors.properties
+echo "$random_scheme" > "$TERMUX_DIR/.current_color"
+reload_settings; reset_color; exit
+}
+
+# Impor file
+import_files () {
+echo "    ${BLUE}[${RED}L${BLUE}] ${ORANGE}File Lokal (masukkan path)"
+echo "    ${BLUE}[${RED}I${BLUE}] ${ORANGE}File Internet (masukkan URL)"
+echo; read -p "${BLUE}    [${RED}Pilih Opsi${BLUE}]: ${GREEN}" option; echo
+
+temp_file=$(mktemp $PREFIX/tmp/termux_XXXXXXXXXX.properties)
+
+if [[ "$option" =~ ^[lL]$ ]]; then
+    read -p "${BLUE}    [${RED}Masukkan path file${BLUE}]: ${GREEN}" file_path; echo
+    cp $file_path $TERMUX_DIR/colors.properties
+    reload_settings; reset_color; exit
+elif [[ "$option" =~ ^[iI]$ ]]; then
+    read -p "${BLUE}    [${RED}Masukkan URL file${BLUE}]: ${GREEN}" file_link; echo
+    wget -o $PREFIX/tmp/log -O $temp_file $file_link
+    cp $temp_file $TERMUX_DIR/colors.properties
+    reload_settings; reset_color; exit
+else
+    echo -n "    ${BLUE}[${RED}!${BLUE}] ${RED}Opsi tidak valid. Coba lagi."
+    sleep 2; banner; echo; import_files
+fi
+}
+
+# Tentang program
+about_program () {
+echo -n ${BLUE}"    ┌───────────────────────────────────────────────────────────────┐
+│         Termux-Style oleh Javas - Kustomisasi Warna & Font       │
+│──────────────────────────────────────────────────────────────────│
+│ Program ini memungkinkan kamu untuk mengubah tampilan Termux.    │
+│ Tersedia berbagai tema dan font yang bisa dipilih.               │
+│──────────────────────────────────────────────────────────────────│
+│ Github   : (custom link if any)                                  │
+└───────────────────────────────────────────────────────────────┘"
+read -p "    ${BLUE}[${RED}*${BLUE}] ${GREEN}Tekan ${GREENBG}${BLACK} Enter ${DEFAULT_BG}${GREEN} untuk kembali ke menu utama."; echo
+}
+
+# Menu Utama
+until [[ "$REPLY" =~ ^[qQ]$ ]]; do
+active_color=$(cat "$TERMUX_DIR/.current_color" 2>/dev/null)
+active_font=$(cat "$TERMUX_DIR/.current_font" 2>/dev/null)
+banner
+echo "
+${BLUE}[${RED}C${BLUE}] ${GREEN}Ganti Tema ($total_colors) (${CYAN}${active_color%.}${GREEN})
+${BLUE}[${RED}F${BLUE}] ${GREEN}Ganti Font ($total_fonts) (${CYAN}${active_font%.}${GREEN})
+${BLUE}[${RED}R${BLUE}] ${GREEN}Acak Tema
+${BLUE}[${RED}I${BLUE}] ${GREEN}Impor Tema
+${BLUE}[${RED}A${BLUE}] ${GREEN}Tentang Program
+${BLUE}[${RED}Q${BLUE}] ${GREEN}Keluar
+"
+read -p "${BLUE}    [${RED}Pilih Menu${BLUE}]: ${GREEN}"; echo
+
+if [[ "$REPLY" =~ ^[cCfFrRiIaAqQ]$ ]]; then
+    case $REPLY in
+        [cC]) apply_colors ;;
+        [fF]) apply_fonts ;;
+        [rR]) random_style ;;
+        [iI]) import_files ;;
+        [aA]) about_program ;;
+    esac
+else
+    echo -n "    ${BLUE}[${RED}!${BLUE}] ${RED}Pilihan tidak valid. Coba lagi."
+    sleep 2
+fi
+done
+
+echo "    ${BLUE}[${RED}*${BLUE}] ${RED}Sampai jumpa, semoga harimu menyenangkan!"
+reset_color
+exit 0
